@@ -48,7 +48,6 @@ defmodule Suchteam.Accounts.User do
 
     if hash_password? && password && changeset.valid? do
       changeset
-      |> validate_length(:password, min: 12, max: 72)
       |> put_change(:hashed_password, Bcrypt.hash_pwd_salt(password))
       |> delete_change(:password)
     else

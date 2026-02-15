@@ -12,11 +12,15 @@
 
 alias Suchteam.{Repo, Accounts, Organizations, Agents}
 
+# ⚠️  WARNING: This creates a demo account with a public password.
+# This is for DEVELOPMENT and TESTING only!
+# DO NOT run this in production, or change the password immediately after.
+
 # Create demo user
 IO.puts("Creating demo user...")
 {:ok, user} = Accounts.register_user(%{
   email: "demo@suchteam.dev",
-  password: "demo_password_123"
+  password: "demo_password_123"  # ⚠️  DEMO PASSWORD - NOT FOR PRODUCTION!
 })
 
 IO.puts("✓ Demo user created: demo@suchteam.dev")

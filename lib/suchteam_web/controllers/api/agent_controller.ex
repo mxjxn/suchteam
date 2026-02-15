@@ -57,9 +57,11 @@ defmodule SuchteamWeb.Api.AgentController do
     
     # Check subscription limits
     current_agent_count = get_organization_agent_count(organization.id)
-    unless Billing.can_perform_action?(organization.id, :create_agent, current_agent_count) do
-      limits = Billing.Subscription.plan_limits(organization.subscription.plan)
-      return conn
+    
+    cond do
+      !Billing.can_perform_action?(organization.id, :create_agent, current_agent_count) ->
+        limits = Billing.Subscription.plan_limits(organization.subscription.plan)
+        conn
         |> put_status(:forbidden)
         |> json(%{
           success: false,
@@ -67,35 +69,36 @@ defmodule SuchteamWeb.Api.AgentController do
           plan: organization.subscription.plan,
           limits: limits
         })
-    end
-    
-    # Ensure team_id belongs to organization
-    team_id = params["team_id"]
-    team = team_id && Agents.get_team(team_id)
-    
-    unless team && team.organization_id == organization.id do
-      return conn
-        |> put_status(:bad_request)
-        |> json(%{success: false, error: "Invalid team_id or team does not belong to your organization"})
-    end
+      
+      # Ensure team_id belongs to organization
+      true ->
+        team_id = params["team_id"]
+        team = team_id && Agents.get_team(team_id)
+        
+        if team && team.organization_id == organization.id do
+          attrs = %{
+            team_id: team_id,
+            type: params["type"] || "sub",
+            parent_agent_id: params["parent_agent_id"],
+            metadata: params["metadata"]
+          }
 
-    attrs = %{
-      team_id: team_id,
-      type: params["type"] || "sub",
-      parent_agent_id: params["parent_agent_id"],
-      metadata: params["metadata"]
-    }
+          case Orchestrator.create_agent(attrs) do
+            {:ok, agent} ->
+              conn
+              |> put_status(:created)
+              |> json(%{success: true, agent: agent})
 
-    case Orchestrator.create_agent(attrs) do
-      {:ok, agent} ->
-        conn
-        |> put_status(:created)
-        |> json(%{success: true, agent: agent})
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{success: false, errors: format_errors(changeset)})
+            {:error, changeset} ->
+              conn
+              |> put_status(:bad_request)
+              |> json(%{success: false, errors: format_errors(changeset)})
+          end
+        else
+          conn
+          |> put_status(:bad_request)
+          |> json(%{success: false, error: "Invalid team_id or team does not belong to your organization"})
+        end
     end
   end
 
@@ -111,25 +114,26 @@ defmodule SuchteamWeb.Api.AgentController do
         
       agent ->
         team = Agents.get_team(agent.team_id)
-        unless team && team.organization_id == organization.id do
-          return conn
-            |> put_status(:forbidden)
-            |> json(%{success: false, error: "Access denied"})
-        end
         
-        case Orchestrator.terminate_agent(id) do
-          {:ok, agent} ->
-            json(conn, %{success: true, agent: agent})
+        if team && team.organization_id == organization.id do
+          case Orchestrator.terminate_agent(id) do
+            {:ok, agent} ->
+              json(conn, %{success: true, agent: agent})
 
-          {:error, :not_found} ->
-            conn
-            |> put_status(:not_found)
-            |> json(%{success: false, error: "Agent not found"})
+            {:error, :not_found} ->
+              conn
+              |> put_status(:not_found)
+              |> json(%{success: false, error: "Agent not found"})
 
-          {:error, reason} ->
-            conn
-            |> put_status(:bad_request)
-            |> json(%{success: false, error: inspect(reason)})
+            {:error, reason} ->
+              conn
+              |> put_status(:bad_request)
+              |> json(%{success: false, error: inspect(reason)})
+          end
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(%{success: false, error: "Access denied"})
         end
     end
   end
@@ -146,16 +150,17 @@ defmodule SuchteamWeb.Api.AgentController do
         
       agent ->
         team = Agents.get_team(agent.team_id)
-        unless team && team.organization_id == organization.id do
-          return conn
+        
+        cond do
+          !team || team.organization_id != organization.id ->
+            conn
             |> put_status(:forbidden)
             |> json(%{success: false, error: "Access denied"})
-        end
-        
-        # Check task creation limits
-        unless Billing.can_perform_action?(organization.id, :create_task) do
-          limits = Billing.Subscription.plan_limits(organization.subscription.plan)
-          return conn
+          
+          # Check task creation limits
+          !Billing.can_perform_action?(organization.id, :create_task) ->
+            limits = Billing.Subscription.plan_limits(organization.subscription.plan)
+            conn
             |> put_status(:forbidden)
             |> json(%{
               success: false,
@@ -163,35 +168,36 @@ defmodule SuchteamWeb.Api.AgentController do
               plan: organization.subscription.plan,
               limits: limits
             })
-        end
+          
+          true ->
+            payload = %{"text" => task_text}
+            opts = [priority: params["priority"]]
 
-        payload = %{"text" => task_text}
-        opts = [priority: params["priority"]]
+            case Orchestrator.delegate_task(agent_id, payload, opts) do
+              {:ok, task} ->
+                # Record usage
+                Billing.record_usage(organization.id, "task_count", 1, %{
+                  agent_id: agent_id,
+                  team_id: agent.team_id
+                })
+                
+                json(conn, %{success: true, task: task})
 
-        case Orchestrator.delegate_task(agent_id, payload, opts) do
-          {:ok, task} ->
-            # Record usage
-            Billing.record_usage(organization.id, "task_count", 1, %{
-              agent_id: agent_id,
-              team_id: agent.team_id
-            })
-            
-            json(conn, %{success: true, task: task})
+              {:error, :not_found} ->
+                conn
+                |> put_status(:not_found)
+                |> json(%{success: false, error: "Agent not found"})
 
-          {:error, :not_found} ->
-            conn
-            |> put_status(:not_found)
-            |> json(%{success: false, error: "Agent not found"})
+              {:error, :agent_terminated} ->
+                conn
+                |> put_status(:bad_request)
+                |> json(%{success: false, error: "Agent is terminated"})
 
-          {:error, :agent_terminated} ->
-            conn
-            |> put_status(:bad_request)
-            |> json(%{success: false, error: "Agent is terminated"})
-
-          {:error, reason} ->
-            conn
-            |> put_status(:bad_request)
-            |> json(%{success: false, error: inspect(reason)})
+              {:error, reason} ->
+                conn
+                |> put_status(:bad_request)
+                |> json(%{success: false, error: inspect(reason)})
+            end
         end
     end
   end
@@ -208,14 +214,15 @@ defmodule SuchteamWeb.Api.AgentController do
         
       agent ->
         team = Agents.get_team(agent.team_id)
-        unless team && team.organization_id == organization.id do
-          return conn
-            |> put_status(:forbidden)
-            |> json(%{success: false, error: "Access denied"})
-        end
         
-        tasks = Agents.list_tasks(agent_id: agent_id)
-        json(conn, %{success: true, tasks: tasks, count: length(tasks)})
+        if team && team.organization_id == organization.id do
+          tasks = Agents.list_tasks(agent_id: agent_id)
+          json(conn, %{success: true, tasks: tasks, count: length(tasks)})
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(%{success: false, error: "Access denied"})
+        end
     end
   end
 
