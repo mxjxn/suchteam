@@ -14,13 +14,17 @@ defmodule Suchteam.Application do
       {Phoenix.PubSub, name: Suchteam.PubSub},
       {Finch, name: Suchteam.Finch},
       Suchteam.OpenClaw.Supervisor,
-      {Oban, Application.get_env(:suchteam, Oban, repo: Suchteam.Repo)},
       Suchteam.Orchestrator,
       SuchteamWeb.Endpoint
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
+    children =
+      if Mix.env() != :test do
+        children ++ [{Oban, Application.get_env(:suchteam, Oban, repo: Suchteam.Repo)}]
+      else
+        children
+      end
+
     opts = [strategy: :one_for_one, name: Suchteam.Supervisor]
     Supervisor.start_link(children, opts)
   end

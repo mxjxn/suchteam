@@ -1,6 +1,6 @@
 # Suchteam - Phoenix Swarm Orchestrator (SaaS Edition)
 
-A Phoenix LiveView-based orchestrator for distributed AI agents with OpenClaw integration. Built as a Phoenix-centric alternative to the TypeScript swarm-conductor, now with multi-tenant SaaS capabilities.
+A Phoenix LiveView-based orchestrator for distributed AI agents with OpenClaw integration. Built as a Phoenix-centric alternative to the TypeScript swarm-conductor, with multi-tenant SaaS capabilities.
 
 ## Features
 
@@ -46,9 +46,9 @@ A Phoenix LiveView-based orchestrator for distributed AI agents with OpenClaw in
 ### Prerequisites
 
 - Elixir 1.14+
-- PostgreSQL 16
+- PostgreSQL 16 (via Docker recommended)
 - Node.js 18+ (for asset building)
-- Redis (optional, for caching)
+- Docker (for PostgreSQL)
 
 ### Installation
 
@@ -60,9 +60,14 @@ cd suchteam
 mix deps.get
 
 # Start PostgreSQL (via Docker)
-docker-compose up -d db
+docker run --name suchteam-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=postgres \
+  -p 5432:5432 \
+  -d postgres
 
-# Run migrations
+# Create and migrate database
 mix ecto.setup
 
 # Start server
@@ -79,9 +84,6 @@ export OPENCLAW_ENABLED=true
 export OPENCLAW_GATEWAY_URL=ws://localhost:18789
 export OPENCLAW_GATEWAY_TOKEN=your_token
 
-# Start OpenClaw (if using Docker)
-docker-compose --profile openclaw up -d
-
 # Start Phoenix
 mix phx.server
 ```
@@ -92,7 +94,7 @@ mix phx.server
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | `ecto://postgres:postgres@localhost:5433/suchteam_dev` | PostgreSQL connection |
+| `DATABASE_URL` | `ecto://postgres:postgres@localhost:5432/suchteam_dev` | PostgreSQL connection |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection |
 | `OPENCLAW_ENABLED` | `false` | Enable OpenClaw integration |
 | `OPENCLAW_GATEWAY_URL` | `ws://localhost:18789` | OpenClaw WebSocket URL |
@@ -138,6 +140,9 @@ suchteam/
 ├── config/                    # Configuration
 ├── lib/
 │   ├── suchteam/              # Business logic
+│   │   ├── accounts/          # User authentication
+│   │   ├── organizations/     # Multi-tenancy
+│   │   ├── billing/           # Subscriptions & usage
 │   │   ├── agents.ex          # Agents context
 │   │   ├── agents/            # Schemas
 │   │   │   ├── agent.ex
@@ -163,7 +168,6 @@ suchteam/
 │       └── router.ex
 ├── priv/
 │   └── repo/migrations/       # Database migrations
-├── docker-compose.yml
 └── mix.exs
 ```
 
@@ -177,6 +181,9 @@ suchteam/
 | `/chat` | Chat interface with file browser |
 | `/agents` | Agent list |
 | `/agents/:id` | Agent details & task delegation |
+| `/register` | User registration |
+| `/login` | User login |
+| `/organizations` | Organization management |
 | `/dev/dashboard` | LiveDashboard (dev only) |
 
 ### REST API
@@ -216,73 +223,6 @@ orchChannel.on("openclaw:connected", () => {})
 orchChannel.on("openclaw:disconnected", () => {})
 ```
 
-## Core Concepts
-
-### Agents
-
-```elixir
-# Create via Orchestrator
-{:ok, agent} = Suchteam.Orchestrator.create_agent(%{
-  team_id: "team-123",
-  type: "master"  # or "sub"
-})
-
-# Types:
-# - master: Primary agent, receives top-level commands
-# - sub: Spawned by master for specialized tasks
-
-# Statuses:
-# - idle: Waiting for tasks
-# - active: Currently processing
-# - terminated: Stopped
-```
-
-### Tasks
-
-```elixir
-# Delegate task to agent
-{:ok, task} = Suchteam.Orchestrator.delegate_task(agent_id, %{
-  "text" => "Analyze this data"
-}, priority: 1)
-
-# Priorities: 1 (highest) to 10 (lowest)
-
-# Task statuses:
-# - pending: Queued
-# - running: Being processed
-# - completed: Success
-# - failed: Error occurred
-```
-
-### Orchestrator
-
-The central GenServer coordinating all operations:
-
-```elixir
-Suchteam.Orchestrator.create_agent(attrs)
-Suchteam.Orchestrator.get_agent(id)
-Suchteam.Orchestrator.list_agents(team_id)
-Suchteam.Orchestrator.delegate_task(agent_id, payload, opts)
-Suchteam.Orchestrator.terminate_agent(agent_id)
-Suchteam.Orchestrator.get_stats()
-```
-
-## Docker
-
-```bash
-# Start PostgreSQL + Redis
-docker-compose up -d
-
-# With OpenClaw
-docker-compose --profile openclaw up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-```
-
 ## Development
 
 ```bash
@@ -295,9 +235,6 @@ mix test
 # Format code
 mix format
 
-# Check credo (if installed)
-mix credo
-
 # Database
 mix ecto.create
 mix ecto.migrate
@@ -308,7 +245,7 @@ mix ecto.reset  # Drop, create, migrate, seed
 
 ### Authentication & Multi-Tenancy
 
-Suchteam now supports multiple users and organizations with secure authentication:
+Suchteam supports multiple users and organizations with secure authentication:
 
 1. **User Registration**: Users create accounts with email/password
 2. **Organizations**: Each user can create/join multiple organizations
@@ -352,17 +289,30 @@ Subscription-based rate limiting enforces plan limits:
 
 Exceeded limits return HTTP 403 with upgrade instructions.
 
-## Comparison with TypeScript Version
+## Docker
 
-| Feature | TypeScript (swarm-conductor) | Elixir (suchteam) |
-|---------|------------------------------|-------------------|
-| Runtime | Node.js | BEAM VM |
-| Framework | Express | Phoenix |
-| WebSockets | Socket.IO | Phoenix Channels |
-| Real-time UI | React + polling | LiveView |
-| Job Queue | BullMQ + Redis | Oban + PostgreSQL |
-| Fault Tolerance | Manual | Supervisor trees |
-| Hot Reload | Restart required | Hot code swap |
+```bash
+# Start PostgreSQL container
+docker run --name suchteam-postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  -d postgres
+
+# View logs
+docker logs -f suchteam-postgres
+
+# Stop
+docker stop suchteam-postgres
+```
+
+## Documentation
+
+- [API Documentation](./API.md) - Full API reference
+- [Deployment Guide](./DEPLOYMENT.md) - Production deployment
+- [SaaS Guide](./SAAS_GUIDE.md) - Implementation details
+- [QA Testing Guide](./QA_TESTING.md) - Manual testing procedures
+- [Billing Strategy](./BILLING_STRATEGY.md) - Subscription model
 
 ## License
 

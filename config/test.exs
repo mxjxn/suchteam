@@ -6,10 +6,12 @@ import Config
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :suchteam, Suchteam.Repo,
+  # Temporary log for debugging,
+  log: false,
   username: "postgres",
   password: "postgres",
   hostname: "localhost",
-  port: 5433,
+  port: 5432,
   database: "suchteam_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
@@ -25,6 +27,9 @@ config :suchteam, SuchteamWeb.Endpoint,
 config :suchteam, Suchteam.Mailer, adapter: Swoosh.Adapters.Test
 
 # Disable swoosh api client as it is only required for production adapters
+
+# Disable Oban during tests to avoid connection ownership issues
+config :suchteam, Oban, testing: :manual
 config :swoosh, :api_client, false
 
 # Print only warnings and errors during test

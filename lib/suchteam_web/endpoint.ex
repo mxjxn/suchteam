@@ -58,5 +58,6 @@ defmodule SuchteamWeb.Endpoint do
   plug(Plug.MethodOverride)
   plug(Plug.Head)
   plug(Plug.Session, @session_options)
+  plug(SuchteamWeb.Plugs.DynamicContext)
   plug(SuchteamWeb.Router)
 end
