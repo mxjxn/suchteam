@@ -6,6 +6,7 @@ const fs = require("fs")
 const path = require("path")
 
 module.exports = {
+  darkMode: "class",
   content: [
     "./js/**/*.js",
     "../lib/suchteam_web.ex",
@@ -15,7 +16,21 @@ module.exports = {
     extend: {
       colors: {
         brand: "#FD4F00",
-      }
+        surface: {
+          DEFAULT: "var(--surface)",
+          muted: "var(--surface-muted)",
+          overlay: "var(--surface-overlay)",
+        },
+        text: {
+          DEFAULT: "var(--text)",
+          muted: "var(--text-muted)",
+          subtle: "var(--text-subtle)",
+        },
+        border: {
+          DEFAULT: "var(--border)",
+          muted: "var(--border-muted)",
+        },
+      },
     },
   },
   plugins: [

@@ -10,14 +10,14 @@
 
 <div class="mt-8 space-y-4">
   <%= for org <- @organizations do %>
-    <div class="bg-white shadow rounded-lg p-6">
+    <div class="bg-surface shadow rounded-lg p-6">
       <div class="flex justify-between items-start">
         <div>
-          <h3 class="text-lg font-semibold"><%= org.name %></h3>
-          <p class="text-sm text-gray-600">@<%= org.slug %></p>
+          <h3 class="text-lg font-semibold text-text">{org.name}</h3>
+          <p class="text-sm text-text-subtle">@{org.slug}</p>
           <%= if org.subscription do %>
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-2">
-              <%= String.capitalize(org.subscription.plan) %> Plan
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 mt-2">
+              {String.capitalize(org.subscription.plan)} Plan
             </span>
           <% end %>
         </div>

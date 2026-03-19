@@ -4,13 +4,12 @@
 </.header>
 
 <div class="mt-8 space-y-6">
-  <!-- Account Info -->
-  <div class="bg-white shadow rounded-lg p-6">
-    <h3 class="text-lg font-semibold mb-4">Account Information</h3>
+  <div class="bg-surface shadow rounded-lg p-6">
+    <h3 class="text-lg font-semibold mb-4 text-text">Account Information</h3>
     <div class="space-y-2">
       <div>
-        <p class="text-sm text-gray-600">Email</p>
-        <p class="text-base"><%= @current_user.email %></p>
+        <p class="text-sm text-text-subtle">Email</p>
+        <p class="text-base text-text">{@current_user.email}</p>
       </div>
       <div class="mt-4">
         <.link href="/settings/password" class="text-brand hover:underline">
@@ -20,24 +19,23 @@
     </div>
   </div>
 
-  <!-- Organizations -->
-  <div class="bg-white shadow rounded-lg p-6">
+  <div class="bg-surface shadow rounded-lg p-6">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="text-lg font-semibold">Your Organizations</h3>
+      <h3 class="text-lg font-semibold text-text">Your Organizations</h3>
       <.link href="/organizations/new">
         <.button>New Organization</.button>
       </.link>
     </div>
-    
+
     <%= if Enum.empty?(@organizations) do %>
-      <p class="text-gray-500">You are not a member of any organizations yet.</p>
+      <p class="text-text-subtle">You are not a member of any organizations yet.</p>
     <% else %>
       <div class="space-y-2">
         <%= for org <- @organizations do %>
-          <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+          <div class="flex justify-between items-center p-3 bg-surface-muted rounded">
             <div>
-              <p class="font-medium"><%= org.name %></p>
-              <p class="text-sm text-gray-600">@<%= org.slug %></p>
+              <p class="font-medium text-text">{org.name}</p>
+              <p class="text-sm text-text-subtle">@{org.slug}</p>
             </div>
             <.link href={"/organizations/#{org.id}"} class="text-brand hover:underline">
               View →

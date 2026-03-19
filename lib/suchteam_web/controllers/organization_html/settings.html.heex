@@ -1,22 +1,28 @@
 <.header>
   Organization Settings
-  <:subtitle>Manage <%= @organization.name %> settings</:subtitle>
+  <:subtitle>Manage {@organization.name} settings</:subtitle>
 </.header>
 
 <div class="mt-8 max-w-2xl">
-  <.simple_form :let={f} for={%{}} as={:organization} action={~p"/organizations/#{@organization.id}"} method="put">
-    <.input 
-      field={f[:name]} 
-      type="text" 
-      label="Organization Name" 
+  <.simple_form
+    :let={f}
+    for={%{}}
+    as={:organization}
+    action={~p"/organizations/#{@organization.id}"}
+    method="put"
+  >
+    <.input
+      field={f[:name]}
+      type="text"
+      label="Organization Name"
       value={@organization.name}
-      required 
+      required
     />
-    
-    <.input 
-      field={f[:slug]} 
-      type="text" 
-      label="Organization Slug" 
+
+    <.input
+      field={f[:slug]}
+      type="text"
+      label="Organization Slug"
       value={@organization.slug}
       help="Used in URLs. Changing this may break existing integrations."
       required
@@ -32,13 +38,12 @@
     </:actions>
   </.simple_form>
 
-  <!-- Danger Zone -->
-  <div class="mt-12 pt-8 border-t border-gray-200">
-    <h3 class="text-lg font-semibold text-red-600 mb-2">Danger Zone</h3>
-    <p class="text-sm text-gray-600 mb-4">
+  <div class="mt-12 pt-8 border-t border-border">
+    <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Danger Zone</h3>
+    <p class="text-sm text-text-subtle mb-4">
       Deleting an organization is permanent and cannot be undone. All teams, agents, and data will be deleted.
     </p>
-    <.button class="bg-red-600 hover:bg-red-700">
+    <.button class="bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600">
       Delete Organization
     </.button>
   </div>

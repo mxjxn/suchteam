@@ -5,18 +5,18 @@
 
 <div class="mt-8 max-w-md">
   <.simple_form :let={f} for={%{}} as={:organization} action={~p"/organizations"} method="post">
-    <.input 
-      field={f[:name]} 
-      type="text" 
-      label="Organization Name" 
+    <.input
+      field={f[:name]}
+      type="text"
+      label="Organization Name"
       placeholder="Acme Inc"
-      required 
+      required
     />
-    
-    <.input 
-      field={f[:slug]} 
-      type="text" 
-      label="Organization Slug" 
+
+    <.input
+      field={f[:slug]}
+      type="text"
+      label="Organization Slug"
       placeholder="acme-inc"
       help="Used in URLs. Lowercase letters, numbers, and dashes only."
     />
@@ -29,7 +29,7 @@
   </.simple_form>
 
   <div class="mt-4">
-    <.link navigate="/organizations" class="text-sm text-gray-600 hover:underline">
+    <.link navigate="/organizations" class="text-sm text-text-subtle hover:text-text-muted">
       ← Back to organizations
     </.link>
   </div>

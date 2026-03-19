@@ -2,4 +2,28 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* This file is for your main application CSS */
+:root {
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --surface-overlay: #ffffff;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-subtle: #71717a;
+  --border: #e4e4e7;
+  --border-muted: #f4f4f5;
+}
+
+.dark {
+  --surface: #18181b;
+  --surface-muted: #27272a;
+  --surface-overlay: #27272a;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --text-subtle: #71717a;
+  --border: #3f3f46;
+  --border-muted: #27272a;
+}
+
+body {
+  @apply bg-surface text-text;
+}
