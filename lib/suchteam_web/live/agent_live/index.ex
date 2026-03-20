@@ -190,15 +190,17 @@ defmodule SuchteamWeb.AgentLive.Index do
   defp format_datetime(dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S")
 
   defp generate_team_id do
-    :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+    Ecto.UUID.generate()
   end
 
   defp format_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
       Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key)
+        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
       end)
     end)
-    |> inspect()
+    |> Enum.map_join(", ", fn {field, messages} ->
+      "#{field}: #{Enum.join(messages, ", ")}"
+    end)
   end
 end

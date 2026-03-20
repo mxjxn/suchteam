@@ -24,9 +24,11 @@
       type="text"
       label="Organization Slug"
       value={@organization.slug}
-      help="Used in URLs. Changing this may break existing integrations."
       required
     />
+    <p class="mt-1 text-xs text-text-subtle">
+      Used in URLs. Changing this may break existing integrations.
+    </p>
 
     <:actions>
       <.button phx-disable-with="Saving...">

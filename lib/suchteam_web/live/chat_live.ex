@@ -11,7 +11,7 @@ defmodule SuchteamWeb.ChatLive do
     Phoenix.PubSub.subscribe(Suchteam.PubSub, "agents")
     Phoenix.PubSub.subscribe(Suchteam.PubSub, "chat")
 
-    agents = Agents.list_agents(status: "active")
+    agents = load_available_agents()
 
     {:ok,
      socket
@@ -86,13 +86,16 @@ defmodule SuchteamWeb.ChatLive do
     {:noreply, assign(socket, :messages, new_messages)}
   end
 
-  def handle_info({:created, agent}, socket) do
-    {:noreply, update(socket, :agents, fn agents -> [agent | agents] end)}
+  def handle_info({:created, _agent}, socket) do
+    {:noreply, assign(socket, :agents, load_available_agents())}
   end
 
-  def handle_info({:terminated, agent}, socket) do
-    {:noreply,
-     update(socket, :agents, fn agents -> Enum.reject(agents, &(&1.id == agent.id)) end)}
+  def handle_info({:terminated, _agent}, socket) do
+    {:noreply, assign(socket, :agents, load_available_agents())}
+  end
+
+  def handle_info({:status_changed, _agent}, socket) do
+    {:noreply, assign(socket, :agents, load_available_agents())}
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}
@@ -110,11 +113,14 @@ defmodule SuchteamWeb.ChatLive do
 
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 flex flex-col">
-          <div class="flex-1 overflow-y-auto p-6 space-y-4" id="chat-messages" phx-update="stream">
-            <div :for={msg <- @messages} class={"flex #{msg.role == "user" && "justify-end" || "justify-start"}"}>
+          <div class="flex-1 overflow-y-auto p-6 space-y-4" id="chat-messages">
+            <div
+              :for={msg <- @messages}
+              class={"flex #{msg.role == "user" && "justify-end" || "justify-start"}"}
+            >
               <div class={"max-w-2xl rounded-lg px-4 py-3 #{msg.role == "user" && "bg-blue-600" || "bg-gray-700"}"}>
-                <p class="whitespace-pre-wrap"><%= msg.text %></p>
-                <p class="text-xs text-gray-300 mt-2"><%= format_time(msg.timestamp) %></p>
+                <p class="whitespace-pre-wrap">{msg.text}</p>
+                <p class="text-xs text-gray-300 mt-2">{format_time(msg.timestamp)}</p>
               </div>
             </div>
 
@@ -131,7 +137,11 @@ defmodule SuchteamWeb.ChatLive do
                 name="message[text]"
                 value={@input_message}
                 phx-input="update_input"
-                placeholder={if @selected_agent, do: "Message #{@selected_agent.type} agent...", else: "Select an agent first..."}
+                placeholder={
+                  if @selected_agent,
+                    do: "Message #{@selected_agent.type} agent...",
+                    else: "Select an agent first..."
+                }
                 class="flex-1 bg-gray-800 rounded-lg px-4 py-3 border border-gray-600 focus:border-blue-500 focus:outline-none"
               />
               <button
@@ -164,7 +174,7 @@ defmodule SuchteamWeb.ChatLive do
             </div>
             <div class="flex-1 overflow-y-auto p-2">
               <div :if={Enum.empty?(@agents)} class="text-center text-gray-400 py-4 text-sm">
-                No active agents
+                No available agents
               </div>
               <button
                 :for={agent <- @agents}
@@ -173,10 +183,10 @@ defmodule SuchteamWeb.ChatLive do
                 class={"w-full text-left px-3 py-2 rounded-lg mb-1 transition #{@selected_agent && @selected_agent.id == agent.id && "bg-blue-600" || "bg-gray-800 hover:bg-gray-700"}"}
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-medium text-sm"><%= String.capitalize(agent.type) %> Agent</span>
-                  <span class="text-xs text-gray-400"><%= short_id(agent.id) %></span>
+                  <span class="font-medium text-sm">{String.capitalize(agent.type)} Agent</span>
+                  <span class="text-xs text-gray-400">{short_id(agent.id)}</span>
                 </div>
-                <p class="text-xs text-gray-400 mt-1 font-mono truncate"><%= agent.session_key %></p>
+                <p class="text-xs text-gray-400 mt-1 font-mono truncate">{agent.session_key}</p>
               </button>
             </div>
           </div>
@@ -210,8 +220,11 @@ defmodule SuchteamWeb.ChatLive do
         class="w-full text-left px-2 py-1 rounded hover:bg-gray-800 flex items-center gap-2"
         style={"padding-left: #{@depth * 12}px"}
       >
-        <.icon name={MapSet.member?(@expanded, @file.path) && "hero-folder-open" || "hero-folder"} class="w-4 h-4 text-yellow-400" />
-        <span class="text-sm truncate"><%= @file.name %></span>
+        <.icon
+          name={(MapSet.member?(@expanded, @file.path) && "hero-folder-open") || "hero-folder"}
+          class="w-4 h-4 text-yellow-400"
+        />
+        <span class="text-sm truncate">{@file.name}</span>
       </button>
       <div :if={MapSet.member?(@expanded, @file.path) && @file.children}>
         <.file_item
@@ -232,7 +245,7 @@ defmodule SuchteamWeb.ChatLive do
       style={"padding-left: #{@depth * 12 + 24}px"}
     >
       <.icon name={file_icon(@file.name)} class="w-4 h-4 text-gray-400" />
-      <span class="text-sm text-gray-300 truncate"><%= @file.name %></span>
+      <span class="text-sm text-gray-300 truncate">{@file.name}</span>
     </div>
     """
   end
@@ -302,6 +315,11 @@ defmodule SuchteamWeb.ChatLive do
       _ ->
         nil
     end
+  end
+
+  defp load_available_agents do
+    all = Agents.list_agents()
+    Enum.reject(all, fn agent -> agent.status == "terminated" end)
   end
 
   defp delegate_to_agent(agent, text) do

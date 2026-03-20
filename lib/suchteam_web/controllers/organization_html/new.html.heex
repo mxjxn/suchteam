@@ -13,13 +13,10 @@
       required
     />
 
-    <.input
-      field={f[:slug]}
-      type="text"
-      label="Organization Slug"
-      placeholder="acme-inc"
-      help="Used in URLs. Lowercase letters, numbers, and dashes only."
-    />
+    <.input field={f[:slug]} type="text" label="Organization Slug" placeholder="acme-inc" />
+    <p class="mt-1 text-xs text-text-subtle">
+      Used in URLs. Lowercase letters, numbers, and dashes only.
+    </p>
 
     <:actions>
       <.button phx-disable-with="Creating..." class="w-full">
