@@ -32,13 +32,14 @@ defmodule Suchteam.Organizations do
   """
   def create_organization(user, attrs \\ %{}) do
     attrs = Map.put(attrs, :owner_id, user.id)
-    
+
     # Generate slug if not provided
-    attrs = if Map.has_key?(attrs, :slug) do
-      attrs
-    else
-      Map.put(attrs, :slug, Organization.generate_slug(attrs[:name] || ""))
-    end
+    attrs =
+      if Map.has_key?(attrs, :slug) do
+        attrs
+      else
+        Map.put(attrs, :slug, Organization.generate_slug(attrs[:name] || ""))
+      end
 
     Ecto.Multi.new()
     |> Ecto.Multi.insert(:organization, Organization.changeset(%Organization{}, attrs))
@@ -51,6 +52,7 @@ defmodule Suchteam.Organizations do
     end)
     |> Ecto.Multi.insert(:subscription, fn %{organization: org} ->
       alias Suchteam.Billing.Subscription
+
       Subscription.changeset(%Subscription{}, %{
         organization_id: org.id,
         plan: "free",
@@ -86,22 +88,20 @@ defmodule Suchteam.Organizations do
   Checks if a user is a member of an organization with the given role.
   """
   def member?(%Organization{id: org_id}, user_id, required_role \\ nil) do
-    query = from m in OrganizationMember,
-      where: m.organization_id == ^org_id and m.user_id == ^user_id
+    query =
+      from m in OrganizationMember,
+        where: m.organization_id == ^org_id and m.user_id == ^user_id
 
-    query = if required_role do
-      from m in query, where: m.role in ^role_hierarchy(required_role)
-    else
-      query
-    end
+    query =
+      if required_role do
+        from m in query, where: m.role in ^role_hierarchy(required_role)
+      else
+        query
+      end
 
     Repo.exists?(query)
   end
 
-  @doc """
-  Returns the role hierarchy for permission checks.
-  owner > admin > member
-  """
   defp role_hierarchy("owner"), do: ["owner"]
   defp role_hierarchy("admin"), do: ["owner", "admin"]
   defp role_hierarchy("member"), do: ["owner", "admin", "member"]
@@ -138,15 +138,16 @@ defmodule Suchteam.Organizations do
   """
   def create_api_key(organization_id, name) do
     {plain_key, key_hash, prefix} = ApiKey.generate_key()
-    
-    result = %ApiKey{}
-    |> ApiKey.changeset(%{
-      organization_id: organization_id,
-      name: name,
-      key_hash: key_hash,
-      prefix: prefix
-    })
-    |> Repo.insert()
+
+    result =
+      %ApiKey{}
+      |> ApiKey.changeset(%{
+        organization_id: organization_id,
+        name: name,
+        key_hash: key_hash,
+        prefix: prefix
+      })
+      |> Repo.insert()
 
     case result do
       {:ok, api_key} -> {:ok, api_key, plain_key}
@@ -159,20 +160,23 @@ defmodule Suchteam.Organizations do
   """
   def validate_api_key(plain_key) when is_binary(plain_key) do
     key_hash = ApiKey.hash_key(plain_key)
-    
-    query = from k in ApiKey,
-      where: k.key_hash == ^key_hash and is_nil(k.revoked_at),
-      where: is_nil(k.expires_at) or k.expires_at > ^DateTime.utc_now(),
-      preload: [organization: :subscription]
+
+    query =
+      from k in ApiKey,
+        where: k.key_hash == ^key_hash and is_nil(k.revoked_at),
+        where: is_nil(k.expires_at) or k.expires_at > ^DateTime.utc_now(),
+        preload: [organization: :subscription]
 
     case Repo.one(query) do
-      nil -> {:error, :invalid_key}
+      nil ->
+        {:error, :invalid_key}
+
       api_key ->
         # Update last_used_at
         api_key
         |> Ecto.Changeset.change(last_used_at: DateTime.utc_now())
         |> Repo.update()
-        
+
         {:ok, api_key.organization}
     end
   end
@@ -182,7 +186,7 @@ defmodule Suchteam.Organizations do
   """
   def revoke_api_key(api_key_id) do
     api_key = Repo.get!(ApiKey, api_key_id)
-    
+
     api_key
     |> Ecto.Changeset.change(revoked_at: DateTime.utc_now())
     |> Repo.update()

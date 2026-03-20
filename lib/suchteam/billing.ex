@@ -6,7 +6,6 @@ defmodule Suchteam.Billing do
   import Ecto.Query, warn: false
   alias Suchteam.Repo
   alias Suchteam.Billing.{Subscription, UsageRecord}
-  alias Suchteam.Organizations.Organization
 
   ## Subscription functions
 
@@ -52,7 +51,8 @@ defmodule Suchteam.Billing do
           max -> get_hourly_api_calls(organization_id) < max
         end
 
-      _ -> false
+      _ ->
+        false
     end
   end
 
@@ -78,7 +78,7 @@ defmodule Suchteam.Billing do
   """
   def get_today_task_count(organization_id) do
     today = DateTime.utc_now() |> DateTime.to_date()
-    
+
     from(u in UsageRecord,
       where: u.organization_id == ^organization_id,
       where: u.metric_type == "task_count",
@@ -94,7 +94,7 @@ defmodule Suchteam.Billing do
   """
   def get_hourly_api_calls(organization_id) do
     one_hour_ago = DateTime.utc_now() |> DateTime.add(-3600, :second)
-    
+
     from(u in UsageRecord,
       where: u.organization_id == ^organization_id,
       where: u.metric_type == "api_calls",

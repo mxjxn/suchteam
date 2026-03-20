@@ -3,7 +3,6 @@ defmodule Suchteam.Accounts.UserToken do
   import Ecto.Query
   alias Suchteam.Accounts.UserToken
 
-  @hash_algorithm :sha256
   @rand_size 32
 
   @session_validity_in_days 60
